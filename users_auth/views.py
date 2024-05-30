@@ -1,8 +1,5 @@
 from django.shortcuts import render
 
-# Create your views here.
-# myapp/views.py
-
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -15,6 +12,13 @@ from .serializers import (
     UpdateProfileSerializer,
 )
 from rest_framework_simplejwt.tokens import RefreshToken
+from users_auth.serializers import (
+    RegistrationSerializer,
+    UserSerializer,
+    ProfileSerializer,
+)
+
+from users_auth.models import CustomUser, Profile
 
 
 class UserRegistration(APIView):
@@ -22,6 +26,7 @@ class UserRegistration(APIView):
         serializer = RegistrationSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            profile = Profile.objects.create(user=user)  # Create a profile for the user
             refresh = RefreshToken.for_user(user)
             return Response(
                 {
@@ -57,7 +62,14 @@ class UserProfile(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
+        user = request.user
+        try:
+            profile = user.profile  # Try to get the profile
+        except Profile.DoesNotExist:
+            profile = Profile.objects.create(
+                user=user
+            )  # Create the profile if it doesn't exist
+        serializer = ProfileSerializer(profile)
         return Response(serializer.data)
 
 
